@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="mainflow" doc:id="a1ed8774-fe7e-457a-874b-2acdf2ba3161" >
+		<http:listener doc:name="Listener" doc:id="3e2c0051-fb59-4572-8228-98070b32bbe1" config-ref="HTTP_Listener_config" path="/products"/>
+		<choice doc:name="Choice" doc:id="ffc7fe8c-eb1a-47a2-983a-dfd627805576" >
+			<when expression="#[attributes.queryParams.brand != null and attributes.method == 'GET']">
+				<flow-ref doc:name="getproductbybrand" doc:id="baa8776f-61bd-4a22-bc3d-4f2a5be815f5" name="getproductbybrand"/>
+			</when>
+			<when expression="#[attributes.queryParams.brand == null and attributes.method == 'GET']">
+				<flow-ref doc:name="getallproducts" doc:id="fa23137b-c7e7-4c66-b941-ca1165462609" name="getallproducts"/>
+			</when>
+			<when expression="#[attributes.method == 'DELETE']">
+				<flow-ref doc:name="deleteproductbyid" doc:id="6003f168-4a3f-49db-a6f5-af089681a18a" name="deleteproductbyid"/>
+			</when>
+			<otherwise >
+				<set-payload value="Invalid Request" doc:name="Set Payload" doc:id="081cb641-27dd-42d6-b9d0-e00f57affccb" />
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="deleteproductbyid" doc:id="837c5978-ae12-4a73-b45a-4b942b6743d4" >
+		<db:delete doc:name="Delete" doc:id="31ea7b5c-a0c1-4f95-bfe4-e0bcd456d826" config-ref="Database_Config">
+			<db:sql ><![CDATA[delete from product where product_id = :pid]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	pid: attributes.queryparams.id
+}]]]></db:input-parameters>
+		</db:delete>
+	</flow>
+	<flow name="getproductbybrand" doc:id="7335a1f6-015d-4b5a-9f6a-cc23c2c6ede3" >
+		<db:select doc:name="Select" doc:id="438519ca-6eb5-4c65-b367-b79e38e46de4" config-ref="Database_Config">
+			<db:sql ><![CDATA[select * from product where brand_name = :bname and original_price > :price]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	bname: attributes.queryParams.brand as String,
+	price: 100
+}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="a0006341-5bf3-4601-a8b4-c51ddd42718e" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="getallproducts" doc:id="17643b7e-18b0-4064-b907-1857ed1005c9" >
+		<db:select doc:name="Select" doc:id="af5b676e-e621-4d1f-b965-6d12781dc9d5" config-ref="Database_Config">
+			<db:sql ><![CDATA[select * from product]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="e7843290-c6ad-431a-a59f-639aee6edb1b">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>
